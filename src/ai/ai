@@ -1,0 +1,200 @@
+#!/bin/python3
+
+import sys
+import socket
+import time
+
+#Important classes
+class _server:
+    host = "localhost"
+    port = 8080
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client = 0
+
+class _ress:
+    food = 0
+    linemate = 0
+    deraumere = 0
+    sibur = 0
+    mendiane = 0
+    phiras = 0
+    thystame = 0
+
+class _action:
+    def __init__(self, f):
+        self.f = f
+        self.Forward = 7/self.f
+        self.Right = 7/f
+        self.Left = 7/f
+        self.Look = 7/f
+        self.Inventory = 1/f
+        self.Broadcast_text = 7/f
+        self.Connect_nbr = 0
+        self.Fork = 42/f
+        self.Eject = 7/f
+        self.Take_obj = 7/f
+        self.Set_obj = 7/f
+        self.Incantation = 300/f
+        self.Hatching = 600/f
+        self.Nb = 0
+
+class _player:
+    def __init__(self, name):
+        self.f = 100
+        self.lifeTime = (126 * 10)/self.f
+        self.Level = 1
+        self.Position = {1.0, 1.0}
+        self.name = name
+        self.message = ""
+        self.alive = True
+        self.ress = _ress()
+        self.action = _action(self.f)
+
+#Global Variables
+player = _player("")
+server = _server()
+
+#display usage
+def print_help():
+    print("USAGE: ./zappy_ai -p port -n name -h machine")
+    print("\tport\tis the port number")
+    print("\tname\tis the name of the team")
+    print("\tmachine\tis the name of the machine; localhost by default")
+
+#Check error in command line arguments
+def check_error():
+    b = 0
+    a = 1
+    while (a < len(sys.argv)):
+        if (sys.argv[a] == "-p" or sys.argv[a] == "-n"):
+            b+=1
+        if (sys.argv[a] == "-p"):
+            try:
+                i = (sys.argv[a]).isnumeric()
+            except ValueError:
+                return 84
+            a+=1
+        elif (sys.argv[a] == "-n"):
+            a+=1
+        elif (sys.argv[a] == "-h"):
+            a+=1
+        else :
+            return 84
+        a+=1
+    if (b < 2):
+        return 84
+    return 0
+
+#Parse the informations in the classes
+def parse_infos():
+    a = 1
+    while (a < len(sys.argv)):
+        token = sys.argv[a]
+        value = sys.argv[a+1]
+        if (token == "-p"):
+            server.port = int(value)
+        elif (token == "-n"):
+            player.name = value
+        elif (token == "-h"):
+            server.host = value
+        a+=2
+
+#Handle ServerCommunication
+def send_command(command, timeout):
+    if (timeout == 0):
+        server.s.send(command.encode())
+        data = server.s.recv(1024)
+        print( "Server said: ", data)
+        return data
+    server.s.settimeout(timeout)
+    start = time.time()
+    try:
+        server.s.send(command.encode())
+        player.action.Nb += 1
+        data = server.s.recv(1024)
+    except socket.timeout as e:
+        print("Error:", e)
+        send_command(command, timeout)
+        return
+    end = time.time()
+    print( "Server said: ", data)
+    return data
+
+def handle_server_com(command, message=""):
+    if (command == player.alive == False):
+        server.s.close()
+        return 1
+    if (command == player.action.Forward):
+        return send_command('Forward\n', command)
+    if (command == player.action.Right):
+        return send_command('Right\n', command)
+    if (command == player.action.Left):
+        return send_command('Left\n', command)
+    if (command == player.action.Look):
+        return send_command('Look\n', command)
+    if (command == player.action.Inventory):
+        return send_command('Inventory\n', command)
+    if (command == player.action.Connect_nbr):
+        return send_command('Connect_nbr\n', command)
+    if (command == player.action.Broadcast_text):
+        return send_command('Broadcast '+message+'\n', command)
+    if (command == player.action.Fork):
+        return send_command('Fork\n', command)
+    if (command == player.action.Eject):
+        return send_command('Eject\n', command)
+    if (command == player.action.Take_obj):
+        return send_command('Take '+message+'\n', command)
+    if (command == player.action.Set_obj):
+        return send_command('Set '+ message+'\n', command)
+    if (command == player.action.Incantation):
+        return send_command('Incantation\n', command)
+    return 1
+
+def protocole():
+    server.s.send("\n".encode())
+    data = server.s.recv(1024)
+    print("Server First Said:" , data)
+    server.s.send((player.name +"\n").encode())
+    data = server.s.recv(1024)
+    print("Server Second Said:" , data)
+    #insert a function to parse data of server
+
+#def parse_server_data(data):
+#    parsed_data = data[4:find('\n')]
+#    parsed_data = parse_data.splitlines()
+#    final_data = []
+#    parsed = []
+#    a = 0
+#    for y in parse_data:
+#        final_data = y.split(' ')
+#            for x in final_data:
+#                parsed[a].append(x)
+#        a+=1
+#    return parsed
+
+#Handle DecisionTaken
+def handle_decision_ai():
+    server.s.connect((server.host, server.port))
+    protocole()
+    start = time.time()
+    while (player.alive):
+        command = player.action.Forward
+        end = time.time()
+        #find_app_command()
+        a = handle_server_com(command, player.message)
+        if (a != 1):
+            player.action.Nb -= 1
+        player.alive = False
+    return 0
+
+
+if __name__ == "__main__":
+    if (len(sys.argv) == 2 and sys.argv[1] == "-help"):
+        print_help()
+        sys.exit(0)
+    elif (check_error() != 0):
+            sys.exit(84)
+    else :
+        parse_infos()
+        handle_decision_ai()
+    print("All is fine")
